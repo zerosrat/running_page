@@ -6,29 +6,28 @@ import json
 import os
 import time
 import urllib.parse
+import xml.etree.ElementTree as ET
 from collections import namedtuple
 from datetime import datetime, timedelta
+from xml.dom import minidom
 
+import eviltransform
 import gpxpy
+import numpy as np
 import polyline
 import requests
-import eviltransform
 from config import (
     BASE_TIMEZONE,
     GPX_FOLDER,
-    TCX_FOLDER,
     JSON_FILE,
     SQL_FILE,
+    TCX_FOLDER,
     run_map,
     start_point,
 )
 from generator import Generator
-
-from utils import adjust_time_to_utc, adjust_timestamp_to_utc, to_date
-
-import numpy as np
-import xml.etree.ElementTree as ET
 from tzlocal import get_localzone
+from utils import adjust_time_to_utc, adjust_timestamp_to_utc, to_date
 
 # struct body
 FitType = np.dtype(
@@ -47,6 +46,8 @@ FitType = np.dtype(
 # device info
 user_agent = "CodoonSport(8.9.0 1170;Android 7;Sony XZ1)"
 did = "24-00000000-03e1-7dd7-0033-c5870033c588"
+# May be Forerunner 945?
+CONNECT_API_PART_NUMBER = "006-D2449-00"
 
 # fixed params
 base_url = "https://api.codoon.com"
@@ -63,9 +64,9 @@ TYPE_DICT = {
 
 # for tcx type
 TCX_TYPE_DICT = {
-    0: "Hike",
+    0: "Hiking",
     1: "Running",
-    2: "Ride",
+    2: "Biking",
 }
 
 # only for running sports, if you want others, please change the True to False
@@ -129,8 +130,17 @@ def formated_input(
 
 
 def tcx_output(fit_array, run_data):
+    """
+    If you want to make a more detailed tcx file, please refer to oppo_sync.py
+    """
     # route ID
     fit_id = str(run_data["id"])
+    # local time
+    fit_start_time_local = run_data["start_time"]
+    # zulu time
+    utc = adjust_time_to_utc(to_date(fit_start_time_local), str(get_localzone()))
+    fit_start_time = utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     # Root node
     training_center_database = ET.Element(
         "TrainingCenterDatabase",
@@ -145,7 +155,7 @@ def tcx_output(fit_array, run_data):
         },
     )
     # xml tree
-    tree = ET.ElementTree(training_center_database)
+    ET.ElementTree(training_center_database)
     # Activities
     activities = ET.Element("Activities")
     training_center_database.append(activities)
@@ -156,23 +166,19 @@ def tcx_output(fit_array, run_data):
     activities.append(activity)
     #   Id
     activity_id = ET.Element("Id")
-    activity_id.text = fit_id
+    activity_id.text = fit_start_time  # Codoon use start_time as ID
     activity.append(activity_id)
     #   Creator
-    activity_creator = ET.Element("Creator")
+    activity_creator = ET.Element("Creator", {"xsi:type": "Device_t"})
     activity.append(activity_creator)
     #       Name
     activity_creator_name = ET.Element("Name")
-    activity_creator_name.text = "咕咚"
+    activity_creator_name.text = "Codoon"
     activity_creator.append(activity_creator_name)
+    activity_creator_product = ET.Element("ProductID")
+    activity_creator_product.text = "3441"
+    activity_creator.append(activity_creator_product)
     #   Lap
-
-    # local time
-    fit_start_time_local = run_data["start_time"]
-    # zulu time
-    utc = adjust_time_to_utc(to_date(fit_start_time_local), str(get_localzone()))
-    fit_start_time = utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-
     activity_lap = ET.Element("Lap", {"StartTime": fit_start_time})
     activity.append(activity_lap)
     #       TotalTimeSeconds
@@ -218,11 +224,22 @@ def tcx_output(fit_array, run_data):
             altitude_meters = ET.Element("AltitudeMeters")
             altitude_meters.text = bytes.decode(i["elevation"])
             tp.append(altitude_meters)
-
+    # Author
+    author = ET.Element("Author", {"xsi:type": "Application_t"})
+    training_center_database.append(author)
+    author_name = ET.Element("Name")
+    author_name.text = "Connect Api"
+    author.append(author_name)
+    author_lang = ET.Element("LangID")
+    author_lang.text = "en"
+    author.append(author_lang)
+    author_part = ET.Element("PartNumber")
+    author_part.text = CONNECT_API_PART_NUMBER
+    author.append(author_part)
     # write to TCX file
-    tree.write(
-        TCX_FOLDER + "/" + fit_id + ".tcx", encoding="utf-8", xml_declaration=True
-    )
+    xml_str = minidom.parseString(ET.tostring(training_center_database)).toprettyxml()
+    with open(TCX_FOLDER + "/" + fit_id + ".tcx", "w") as f:
+        f.write(str(xml_str))
 
 
 # TODO time complexity is too heigh, need to be reduced
@@ -238,13 +255,13 @@ def tcx_job(run_data):
     if "points" in run_data:
         own_points = run_data["points"]  # track points
     # get single bpm
-    if own_heart_rate != None:
+    if own_heart_rate is not None:
         for single_time, single_bpm in own_heart_rate.items():
             single_time = adjust_timestamp_to_utc(single_time, str(get_localzone()))
             # set bpm data
             fit_array = set_array(fit_array, single_time, single_bpm, None, None, None)
     # get single track point
-    if own_points != None:
+    if own_points is not None:
         for point in own_points:
             repeat_flag = False
             # TODO add elevation information
@@ -349,9 +366,9 @@ class CodoonAuth:
             r.headers["timestamp"] = timestamp
             if "refresh_token" in params:
                 r.headers["authorization"] = "Basic " + basic_auth
-                r.headers[
-                    "content-type"
-                ] = "application/x-www-form-urlencode; charset=utf-8"
+                r.headers["content-type"] = (
+                    "application/x-www-form-urlencode; charset=utf-8"
+                )
             else:
                 r.headers["authorization"] = "Bearer " + self.token
                 r.headers["content-type"] = "application/json; charset=utf-8"
