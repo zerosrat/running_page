@@ -13,7 +13,7 @@ import Map, {
   NavigationControl,
   MapRef,
   MapInstance,
-} from 'react-map-gl/mapbox';
+} from './mapRenderer';
 import useActivities from '../../hooks/useActivities';
 import {
   IS_CHINESE,
@@ -248,7 +248,7 @@ const RunMap = ({
     (ref: MapRef) => {
       if (ref !== null) {
         const map = ref.getMap();
-        if (map && IS_CHINESE) {
+        if (map && IS_CHINESE && MAPBOX_TOKEN) {
           map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
         }
         // all style resources have been downloaded

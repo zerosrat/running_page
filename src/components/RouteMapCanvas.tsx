@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import * as polyline from '@mapbox/polyline';
 import type { Activity } from '../types';
@@ -109,13 +111,21 @@ export function RouteMapCanvas({
   const fitRoutes = useCallback(() => {
     const map = mapRef.current;
     if (!map || routeBounds.isEmpty()) return;
-    map.fitBounds(routeBounds, {
-      padding: { top: 35, bottom: 35, left: 35, right: 65 },
-      maxZoom: selectedActivity ? 16 : 13,
-      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 0
-        : 500,
-    });
+    map.fitBounds(
+      [
+        routeBounds.getWest(),
+        routeBounds.getSouth(),
+        routeBounds.getEast(),
+        routeBounds.getNorth(),
+      ],
+      {
+        padding: { top: 35, bottom: 35, left: 35, right: 65 },
+        maxZoom: selectedActivity ? 16 : 13,
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 0
+          : 500,
+      }
+    );
   }, [routeBounds, selectedActivity]);
 
   const drawRoutes = useCallback(() => {
@@ -155,7 +165,13 @@ export function RouteMapCanvas({
 
   useEffect(() => {
     if (!containerRef.current || !panelRef.current) return;
-    const map = new mapboxgl.Map({
+    // This component uses the shared public Map/Control API. Choose a matching
+    // renderer and controls together: Mapbox GL requires a token even for CARTO.
+    const renderer =
+      provider === 'mapbox'
+        ? mapboxgl
+        : (maplibregl as unknown as typeof mapboxgl);
+    const map = new renderer.Map({
       container: containerRef.current,
       accessToken: MAPBOX_TOKEN,
       language: zh ? 'zh-Hans' : 'en',
@@ -176,20 +192,21 @@ export function RouteMapCanvas({
         : {},
     });
     mapRef.current = map;
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    fittedRef.current = null;
+    map.addControl(new renderer.NavigationControl(), 'top-right');
     map.addControl(
-      new mapboxgl.FullscreenControl({ container: panelRef.current }),
+      new renderer.FullscreenControl({ container: panelRef.current }),
       'top-right'
     );
     map.addControl(
-      new mapboxgl.ScaleControl({ unit: 'metric', maxWidth: 90 }),
+      new renderer.ScaleControl({ unit: 'metric', maxWidth: 90 }),
       'bottom-left'
     );
     const observer = new ResizeObserver(() => map.resize());
     observer.observe(containerRef.current);
     return () => {
       cameraRef.current = {
-        center: map.getCenter(),
+        center: map.getCenter().toArray(),
         zoom: map.getZoom(),
         bearing: map.getBearing(),
         pitch: map.getPitch(),
@@ -198,15 +215,21 @@ export function RouteMapCanvas({
       map.remove();
       mapRef.current = null;
     };
-  }, [zh]);
+  }, [zh, provider]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     let failed = false;
     const onError = (event: mapboxgl.ErrorEvent) => {
+      console.error('Route map failed:', event.error);
       const code = (event.error as Error & { status?: number }).status;
-      if (provider === 'mapbox' && (code === 401 || code === 403)) {
+      if (
+        provider === 'mapbox' &&
+        (code === 401 ||
+          code === 403 ||
+          /access token/i.test(event.error.message))
+      ) {
         setProvider('carto');
       } else {
         failed = true;
@@ -249,7 +272,7 @@ export function RouteMapCanvas({
     return () => {
       map.off('style.load', onStyleLoad);
     };
-  }, [drawRoutes, style, retry, zh]);
+  }, [drawRoutes, style, retry, zh, provider]);
 
   useEffect(() => {
     let wasFullscreen = document.fullscreenElement === panelRef.current;

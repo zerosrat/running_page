@@ -1,3 +1,5 @@
+> 地图默认使用 MapLibre + CARTO，无需 Token。使用 Mapbox 时，请在 `config.yml` 的 `mapbox_token` 或构建环境 `VITE_MAPBOX_TOKEN` 中设置自己的有效 Token；Mapbox 渲染器即便使用第三方底图也需要认证。
+
 > 本分支用于 https://run.zerosrat.dev，默认使用 Dashboard 主题。可在 `config.yml` 切换 classic；其中运动目标为模板示例，请设定自己的目标。个人运动数据独立于上游代码保留。
 
 ## Note

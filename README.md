@@ -1,3 +1,5 @@
+> Maps use MapLibre with CARTO without a token. To use Mapbox, set your own `mapbox_token` in `config.yml` or `VITE_MAPBOX_TOKEN` at build time; the Mapbox renderer requires a valid token even with third-party tiles.
+
 > This fork powers https://run.zerosrat.dev with the Dashboard theme. Themes and the example goals can be configured in `config.yml`; set your own goals before switching. Personal activity data is maintained separately from upstream code.
 
 ## Note
