@@ -557,6 +557,29 @@ python run_page/nike_sync.py eyJhbGciThiMTItNGIw******
 
 </details>
 
+### Strava Web Sync
+
+This fork uses web sync because Strava Standard Tier OAuth API access now requires
+an active subscription. Adapted from [upstream's web-sync implementation](https://github.com/yihong0618/running_page/blob/61563c049c75dc8813283d1a109941d751dcd0d4/run_page/strava_web_sync.py).
+
+1. Log into Strava, then open browser DevTools → Application → Cookies → Strava.
+2. Save `strava_remember_token` directly as the repository Actions secret `STRAVA_JWT`.
+   Do not commit it or paste it into logs. Upstream notes it expires in roughly
+   30 days; replace the secret when the session expires.
+3. Run **Run Data Sync**. `RUN_TYPE: strava_web` syncs runs only.
+
+By default, sync resumes from the latest stored activity with a seven-day overlap,
+so a long outage is caught up automatically. An empty database imports all history.
+The optional Actions variable `STRAVA_WEB_DAYS` overrides this lookback; leave it
+unset for automatic catch-up. Failed stream requests stop the run to avoid
+replacing existing tracks with empty data.
+
+Locally, set `STRAVA_JWT` in the environment and run:
+
+```bash
+python run_page/strava_web_sync.py --only-run
+```
+
 ### Strava
 
 <details>
