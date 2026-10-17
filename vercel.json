@@ -4,5 +4,34 @@
       "gh-pages": false
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    {
+      "source": "/run/:path*",
+      "destination": "/run/index.html"
+    }
+  ],
+  "buildCommand": "pnpm build --base=/run/ --outDir=dist/run",
+  "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/run/",
+      "permanent": false
+    },
+    {
+      "source": "/summary",
+      "destination": "/run/summary",
+      "permanent": false
+    },
+    {
+      "source": "/tracks",
+      "destination": "/run/tracks",
+      "permanent": false
+    },
+    {
+      "source": "/run",
+      "destination": "/run/",
+      "permanent": true
+    }
+  ]
 }

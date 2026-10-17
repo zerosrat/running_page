@@ -9,7 +9,7 @@ const Summary = lazy(() => import('./pages/summary'));
 export default function ClassicTheme() {
   return (
     <HelmetProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>
             <Route path="/" element={<Index />} />

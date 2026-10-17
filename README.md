@@ -1,6 +1,8 @@
 > Maps use MapLibre with CARTO without a token. To use Mapbox, set your own `mapbox_token` in `config.yml` or `VITE_MAPBOX_TOKEN` at build time; the Mapbox renderer requires a valid token even with third-party tiles.
 
-> This fork powers https://run.zerosrat.dev with the Dashboard theme. Themes and the example goals can be configured in `config.yml`; set your own goals before switching. Personal activity data is maintained separately from upstream code.
+> This fork powers https://zerosrat.dev/run/ with the Dashboard theme. Themes and the example goals can be configured in `config.yml`; set your own goals before switching. Personal activity data is maintained separately from upstream code.
+
+Vercel builds this fork with `pnpm build --base=/run/ --outDir=dist/run` and serves `dist`. The Netlify blog proxies `/run/*` to `https://run.zerosrat.dev/run/:splat`, preserving the prefix for assets and client routes. Keep this origin serving content (do not redirect it back to the blog, which would create a proxy loop). Local development still uses `/` by default; use `PATH_PREFIX=/run pnpm dev` to test the deployment prefix.
 
 ## Note
 

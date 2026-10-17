@@ -5,7 +5,7 @@ import { useTheme, Theme } from '../../hooks/useTheme';
 import styles from './style.module.css';
 
 const Header = () => {
-  const { logo, siteUrl, navLinks } = getSiteMetadata();
+  const { logo, navLinks } = getSiteMetadata();
   const { theme, setTheme } = useTheme();
 
   const icons: Record<Theme, ReactElement> = {
@@ -55,7 +55,7 @@ const Header = () => {
     <>
       <nav className="mx-auto mt-12 flex w-full max-w-screen-2xl flex-wrap items-center justify-between gap-4 px-4 lg:px-16">
         <div className="shrink-0">
-          <Link to={siteUrl}>
+          <Link to="/">
             <picture>
               <img className="h-16 w-16 rounded-full" alt="logo" src={logo} />
             </picture>
