@@ -102,8 +102,8 @@ class WebActivity:
         self.moving_time = datetime.timedelta(seconds=moving_secs)
         elapsed_secs = int(raw.get("elapsed_time_raw") or 0) or moving_secs
         self.elapsed_time = datetime.timedelta(seconds=elapsed_secs)
-        self.start_date = datetime.datetime.fromtimestamp(
-            int(raw["start_date_local_raw"]), tz=datetime.UTC
+        self.start_date = _local_datetime(raw["start_date_local_raw"]).astimezone(
+            datetime.UTC
         ).isoformat(sep=" ")
         # start_date_local_raw is a Unix timestamp -> local date string
         self.start_date_local = _fmt_local_date(raw.get("start_date_local_raw"))
@@ -132,13 +132,16 @@ class WebActivity:
         self.map = run_map(self.summary_polyline)
 
 
+def _local_datetime(ts):
+    # Strava encodes local wall-clock time as if it were UTC. Applying the
+    # timezone offset again would move evening activities into the next day.
+    return datetime.datetime.fromtimestamp(int(ts), tz=datetime.UTC).replace(
+        tzinfo=ZoneInfo(BASE_TIMEZONE)
+    )
+
+
 def _fmt_local_date(ts):
-    """Unix timestamp -> 'YYYY-MM-DD HH:MM:SS' in BASE_TIMEZONE."""
-    if not ts:
-        return ""
-    local_tz = ZoneInfo(BASE_TIMEZONE)
-    dt = datetime.datetime.fromtimestamp(int(ts), tz=datetime.UTC).astimezone(local_tz)
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return _local_datetime(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _fetch_json(client, url, **extra_headers):
@@ -204,7 +207,7 @@ def run_strava_web_sync(jwt, days=None, only_run=False):
             break
         for raw in models:
             ts = raw.get("start_date_local_raw")
-            if ts is not None and float(ts) < cutoff:
+            if ts is not None and _local_datetime(ts).timestamp() < cutoff:
                 # List is newest-first, so once we pass the cutoff the rest are older.
                 return _finalize(session, total_fetched, only_run)
             if only_run and raw.get("sport_type") != "Run":
@@ -226,6 +229,10 @@ def _sync_one(client, session, raw):
         act.map = run_map(filter_out(act.summary_polyline))
     created = update_or_create_activity(session, act)
     # The shared DB helper catches errors; do not report success for a lost record.
+    saved = session.get(Activity, aid)
+    if saved is not None:
+        saved.start_date = act.start_date
+        saved.start_date_local = act.start_date_local
     session.flush()
     if session.get(Activity, aid) is None:
         raise RuntimeError(f"Activity {aid} was not saved")

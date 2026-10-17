@@ -54,8 +54,15 @@ class WebSyncTests(unittest.TestCase):
         saved = session.get(sync.Activity, 123)
         self.assertEqual(saved.name, "Evening run")
         self.assertEqual(saved.distance, 1000)
-        self.assertEqual(saved.start_date_local, "2026-02-02 10:40:00")
+        self.assertEqual(saved.start_date_local, "2026-02-02 02:40:00")
         session.close()
+
+    def test_local_wall_clock_does_not_shift_evening_to_next_day(self):
+        ts = int(datetime.datetime(2026, 10, 16, 21, 28, 7,
+                                   tzinfo=datetime.UTC).timestamp())
+        activity = sync.WebActivity({"id": 1, "start_date_local_raw": ts})
+        self.assertEqual(activity.start_date_local, "2026-10-16 21:28:07")
+        self.assertEqual(activity.start_date, "2026-10-16 13:28:07+00:00")
 
     def test_adapter_units_dates_and_route(self):
         raw = {"id": "123", "sport_type": "Run", "distance_raw": 1000,
@@ -65,8 +72,8 @@ class WebSyncTests(unittest.TestCase):
         self.assertEqual(activity.distance, 1000)
         self.assertEqual(activity.moving_time, datetime.timedelta(seconds=300))
         self.assertEqual(activity.average_heartrate, 130)
-        self.assertEqual(activity.start_date, "1970-01-01 00:00:00+00:00")
-        self.assertEqual(sync._fmt_local_date(1770000000), "2026-02-02 10:40:00")
+        self.assertEqual(activity.start_date, "1969-12-31 16:00:00+00:00")
+        self.assertEqual(sync._fmt_local_date(1770000000), "2026-02-02 02:40:00")
         self.assertEqual(activity.summary_polyline, "_p~iF~ps|U_ulLnnqC")
 
 
