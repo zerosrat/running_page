@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import type { Activity } from '@/types';
+import getSiteMetadata from '@core/hooks/useSiteMetadata';
 import {
   useFilteredActivities,
   getAvailableYears,
@@ -62,6 +63,17 @@ function Dashboard() {
   );
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [page, setPage] = useState<Page>(pageFromPath);
+
+  useEffect(() => {
+    const canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    canonical.href = new URL(
+      page === 'home' ? '' : page,
+      getSiteMetadata().siteUrl
+    ).href;
+    document.head.appendChild(canonical);
+    return () => canonical.remove();
+  }, [page]);
 
   useEffect(() => {
     const onPopState = () => setPage(pageFromPath());
