@@ -23,12 +23,12 @@ import os
 import sys
 import time
 import uuid
-
 from zoneinfo import ZoneInfo
+
 from config import BASE_TIMEZONE, JSON_FILE, SQL_FILE, run_map, start_point
 from generator.db import Activity, g, init_db, update_or_create_activity
-from sqlalchemy import func
 from polyline_processor import filter_out
+from sqlalchemy import func
 from stravaweblib import WebClient
 
 logger = logging.getLogger(__name__)
@@ -102,9 +102,11 @@ class WebActivity:
         self.moving_time = datetime.timedelta(seconds=moving_secs)
         elapsed_secs = int(raw.get("elapsed_time_raw") or 0) or moving_secs
         self.elapsed_time = datetime.timedelta(seconds=elapsed_secs)
-        self.start_date = _local_datetime(raw["start_date_local_raw"]).astimezone(
-            datetime.UTC
-        ).isoformat(sep=" ")
+        self.start_date = (
+            _local_datetime(raw["start_date_local_raw"])
+            .astimezone(datetime.UTC)
+            .isoformat(sep=" ")
+        )
         # start_date_local_raw is a Unix timestamp -> local date string
         self.start_date_local = _fmt_local_date(raw.get("start_date_local_raw"))
         self.elevation_gain = raw.get("elevation_gain_raw") or 0.0
@@ -166,9 +168,7 @@ def _fetch_streams(client, aid):
     # x-csrf-token is the value of the authenticity_token param
     if csrf:
         headers["x-csrf-token"] = next(iter(csrf.values()))
-    resp = client._session.get(
-        STREAMS_URL.format(aid=aid), headers=headers, timeout=60
-    )
+    resp = client._session.get(STREAMS_URL.format(aid=aid), headers=headers, timeout=60)
     resp.raise_for_status()
     return resp.json()
 
@@ -260,11 +260,15 @@ if __name__ == "__main__":
         description="Sync Strava activities via web endpoints (JWT session)."
     )
     parser.add_argument(
-        "jwt", nargs="?", default=os.getenv("STRAVA_JWT"),
+        "jwt",
+        nargs="?",
+        default=os.getenv("STRAVA_JWT"),
         help="Strava session JWT (prefer the STRAVA_JWT environment variable)",
     )
     parser.add_argument(
-        "--days", type=int, help="lookback days (default: resume from DB with 7-day overlap)"
+        "--days",
+        type=int,
+        help="lookback days (default: resume from DB with 7-day overlap)",
     )
     parser.add_argument(
         "--only-run",
