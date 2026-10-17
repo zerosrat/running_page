@@ -15,18 +15,18 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "/run/",
-      "permanent": false
+      "destination": "https://zerosrat.dev/run/",
+      "permanent": true
     },
     {
       "source": "/summary",
-      "destination": "/run/summary",
-      "permanent": false
+      "destination": "https://zerosrat.dev/run/summary",
+      "permanent": true
     },
     {
       "source": "/tracks",
-      "destination": "/run/tracks",
-      "permanent": false
+      "destination": "https://zerosrat.dev/run/tracks",
+      "permanent": true
     },
     {
       "source": "/run",
