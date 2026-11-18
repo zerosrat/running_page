@@ -260,7 +260,7 @@ python run_page/strava_web_sync.py <JWT> --days 7 --only-run
 | --- | --- | --- |
 | Secret | `HAE_DRIVE_SERVICE_ACCOUNT_JSON` | 服务账号密钥 JSON 的完整内容 |
 | Variable | `HAE_DRIVE_FOLDER_ID` | HAE 导出目录 ID |
-| Variable | `RUN_TYPE` | `health_auto_export_drive` |
+| Variable | `RUN_TYPE` | `health_auto_export` |
 
 导入会比对现有跑步的开始时间、距离和时长。匹配到已有活动时保留原记录，缺失的活动会补进来。配置后，可以在 Actions 手动运行 **Run Data Sync**，勾选预览验证。之后沿用现有每日调度。每次读取专用目录下所有 JSON，重复活动按 workout ID 合并。源文件临时下载到 runner 的临时目录，运行结束后清理。
 

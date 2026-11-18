@@ -36,7 +36,7 @@ concurrency:
 
 env:
   # please change to your own config.
-  RUN_TYPE: ${{ inputs.hae_drive_preview && 'health_auto_export_drive' || vars.RUN_TYPE || 'strava_web' }} # support health_auto_export_drive/strava_web/strava/nike/garmin/coros/garmin_cn/garmin_sync_cn_global/keep/only_gpx/only_fit/nike_to_strava/strava_to_garmin/tcx_to_garmin/strava_to_garmin_cn/garmin_to_strava/garmin_to_strava_cn/oppo/db_updater, Please change the 'pass' it to your own
+  RUN_TYPE: ${{ inputs.hae_drive_preview && 'health_auto_export' || vars.RUN_TYPE || 'strava_web' }} # support health_auto_export/strava_web/strava/nike/garmin/coros/garmin_cn/garmin_sync_cn_global/keep/only_gpx/only_fit/nike_to_strava/strava_to_garmin/tcx_to_garmin/strava_to_garmin_cn/garmin_to_strava/garmin_to_strava_cn/oppo/db_updater, Please change the 'pass' it to your own
   ATHLETE: zeroyu
   TITLE: Zero Running
   MIN_GRID_DISTANCE: 10 # change min distance here
@@ -172,7 +172,7 @@ jobs:
           python run_page/strava_web_sync.py "${args[@]}"
 
       - name: Import Health Auto Export from Google Drive
-        if: env.RUN_TYPE == 'health_auto_export_drive'
+        if: env.RUN_TYPE == 'health_auto_export'
         env:
           HAE_DRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.HAE_DRIVE_SERVICE_ACCOUNT_JSON }}
           HAE_DRIVE_FOLDER_ID: ${{ secrets.HAE_DRIVE_FOLDER_ID || vars.HAE_DRIVE_FOLDER_ID }}
