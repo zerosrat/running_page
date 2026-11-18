@@ -25,9 +25,13 @@ on:
       - run_page/intervals_icu_sync.py
       - requirements.txt
 
+concurrency:
+  group: run-data-sync-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   # please change to your own config.
-  RUN_TYPE: strava_web # support strava_web/strava/nike/garmin/coros/garmin_cn/garmin_sync_cn_global/keep/only_gpx/only_fit/nike_to_strava/strava_to_garmin/tcx_to_garmin/strava_to_garmin_cn/garmin_to_strava/garmin_to_strava_cn/oppo/db_updater, Please change the 'pass' it to your own
+  RUN_TYPE: ${{ vars.RUN_TYPE || 'strava_web' }} # support health_auto_export_drive/strava_web/strava/nike/garmin/coros/garmin_cn/garmin_sync_cn_global/keep/only_gpx/only_fit/nike_to_strava/strava_to_garmin/tcx_to_garmin/strava_to_garmin_cn/garmin_to_strava/garmin_to_strava_cn/oppo/db_updater, Please change the 'pass' it to your own
   ATHLETE: zeroyu
   TITLE: Zero Running
   MIN_GRID_DISTANCE: 10 # change min distance here
@@ -161,6 +165,27 @@ jobs:
             args+=(--days "$STRAVA_WEB_DAYS")
           fi
           python run_page/strava_web_sync.py "${args[@]}"
+
+      - name: Import Health Auto Export from Google Drive
+        if: env.RUN_TYPE == 'health_auto_export_drive'
+        env:
+          HAE_DRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.HAE_DRIVE_SERVICE_ACCOUNT_JSON }}
+          HAE_DRIVE_FOLDER_ID: ${{ vars.HAE_DRIVE_FOLDER_ID }}
+          HAE_IMPORT_SINCE: ${{ vars.HAE_IMPORT_SINCE }}
+        run: |
+          if [ -z "$HAE_IMPORT_SINCE" ]; then
+            echo "::error::Set HAE_IMPORT_SINCE to the first activity timestamp to import, with a time zone offset."
+            exit 1
+          fi
+          export_dir="$(mktemp -d "$RUNNER_TEMP/hae-drive.XXXXXXXX")"
+          trap 'rm -rf -- "$export_dir"' EXIT
+          python -m pip install 'google-auth[requests]>=2,<3'
+          python run_page/health_auto_export_drive.py "$export_dir"
+          if compgen -G "$export_dir/*.json" > /dev/null; then
+            python run_page/health_auto_export_sync.py "$export_dir" --since "$HAE_IMPORT_SINCE"
+          else
+            echo "No JSON exports in the configured Drive folder."
+          fi
 
       # for garmin if you want generate 'tcx' you can add --tcx command in the args.
       - name: Run sync Garmin script
