@@ -30,6 +30,9 @@ jobs:
       - name: Test Strava web sync
         run: python -m unittest discover -s tests -v
 
+      - name: Test Health Auto Export and Drive sync
+        run: python -m pytest -q test_health_auto_export.py test_health_auto_export_drive.py
+
       - name: Run GPX sync test
         run: |
           # make sure the gpx_sync.py script is executable

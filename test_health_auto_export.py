@@ -101,12 +101,21 @@ def test_collision_does_not_replace_existing_activity(importer, tmp_path):
     assert output.read_bytes() == previous
 
 
-def test_existing_history_dedup_without_cutoff(importer, tmp_path):
+@pytest.mark.parametrize("hae_first", [False, True])
+def test_existing_history_dedup_without_cutoff(importer, tmp_path, hae_first):
     from datetime import timedelta
 
     source = tmp_path / "export.json"
     database = tmp_path / "data.db"
     output = tmp_path / "activities.json"
+    write_export(
+        source,
+        workout("same-as-strava"),
+        workout("missing-from-strava", distance={"qty": 2, "units": "km"}),
+    )
+    if hae_first:
+        assert importer.import_workouts(source, database, output) == (2, 0)
+
     with importer.Generator(database).session as session:
         session.add(
             importer.Activity(
@@ -122,11 +131,6 @@ def test_existing_history_dedup_without_cutoff(importer, tmp_path):
         )
         session.commit()
 
-    write_export(
-        source,
-        workout("same-as-strava"),
-        workout("missing-from-strava", distance={"qty": 2, "units": "km"}),
-    )
     for _ in range(2):
         assert importer.import_workouts(source, database, output) == (1, 1)
         runs = json.loads(output.read_text())
@@ -134,3 +138,8 @@ def test_existing_history_dedup_without_cutoff(importer, tmp_path):
         original = next(run for run in runs if run["run_id"] == 123)
         assert original["name"] == "Original Strava title"
         assert original["distance"] == 4800
+        with importer.Generator(database).session as session:
+            owners = session.scalars(importer.select(importer.workout_ids.c.run_id))
+            assert set(owners) == {
+                run["run_id"] for run in runs if run["run_id"] != 123
+            }

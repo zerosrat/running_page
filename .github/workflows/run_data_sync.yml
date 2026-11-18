@@ -107,7 +107,7 @@ jobs:
       - name: Cache Data Files
         if: env.SAVE_DATA_IN_GITHUB_CACHE == 'true' && !inputs.hae_drive_preview
         uses: actions/cache@v4
-        with:
+        with: &sync-data-cache
           path: |
             activities
             assets
@@ -122,6 +122,11 @@ jobs:
           restore-keys: |
             ${{ env.DATA_CACHE_PREFIX }}-${{ github.sha }}-
             ${{ env.DATA_CACHE_PREFIX }}-
+
+      - name: Restore data for Drive preview
+        if: env.SAVE_DATA_IN_GITHUB_CACHE == 'true' && inputs.hae_drive_preview
+        uses: actions/cache/restore@v4
+        with: *sync-data-cache
 
       - name: Run sync Nike script
         if: env.RUN_TYPE == 'nike'

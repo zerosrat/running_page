@@ -175,7 +175,8 @@ def save_workout(session, external_id, fields):
     run_id = session.scalar(
         select(workout_ids.c.run_id).where(workout_ids.c.external_id == external_id)
     )
-    if run_id is None:
+    owner_exists = run_id is not None
+    if not owner_exists:
         digest = hashlib.sha256(f"health_auto_export:{external_id}".encode()).digest()
         # Negative IDs disjoint from ordinary positive activity IDs. Keep them
         # exactly representable as numbers in the frontend.
@@ -185,8 +186,16 @@ def save_workout(session, external_id, fields):
         )
         if owner is not None or session.get(Activity, run_id) is not None:
             raise ValueError(f"Activity ID collision at {run_id}")
-        if matches_existing_run(session, fields):
-            return False
+    if matches_existing_run(session, fields):
+        if owner_exists:
+            activity = session.get(Activity, run_id)
+            if activity is not None:
+                session.delete(activity)
+            session.execute(
+                workout_ids.delete().where(workout_ids.c.external_id == external_id)
+            )
+        return False
+    if not owner_exists:
         session.execute(
             insert(workout_ids).values(external_id=external_id, run_id=run_id)
         )
