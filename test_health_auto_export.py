@@ -99,3 +99,38 @@ def test_collision_does_not_replace_existing_activity(importer, tmp_path):
     with pytest.raises(ValueError, match="Activity ID collision"):
         importer.import_workouts(source, database, output)
     assert output.read_bytes() == previous
+
+
+def test_existing_history_dedup_without_cutoff(importer, tmp_path):
+    from datetime import timedelta
+
+    source = tmp_path / "export.json"
+    database = tmp_path / "data.db"
+    output = tmp_path / "activities.json"
+    with importer.Generator(database).session as session:
+        session.add(
+            importer.Activity(
+                run_id=123,
+                name="Original Strava title",
+                type="Run",
+                distance=4800,
+                moving_time=timedelta(seconds=1780),
+                elapsed_time=timedelta(seconds=1860),
+                start_date="2024-12-31T23:00:30+00:00",
+                start_date_local="2025-01-01 07:00:30",
+            )
+        )
+        session.commit()
+
+    write_export(
+        source,
+        workout("same-as-strava"),
+        workout("missing-from-strava", distance={"qty": 2, "units": "km"}),
+    )
+    for _ in range(2):
+        assert importer.import_workouts(source, database, output) == (1, 1)
+        runs = json.loads(output.read_text())
+        assert len(runs) == 2
+        original = next(run for run in runs if run["run_id"] == 123)
+        assert original["name"] == "Original Strava title"
+        assert original["distance"] == 4800

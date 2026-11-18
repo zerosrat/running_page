@@ -13,7 +13,7 @@ from config import JSON_FILE, SQL_FILE
 from generator import IGNORE_BEFORE_SAVING, Generator
 from generator.db import Activity
 from polyline_processor import filter_out
-from sqlalchemy import Column, Integer, MetaData, String, Table, insert, select
+from sqlalchemy import Column, Integer, MetaData, String, Table, func, insert, select
 
 # Store ownership separately so existing Activity rows and public JSON need no
 # schema changes. An occupied ID without matching ownership is a collision.
@@ -137,6 +137,40 @@ def merge_fields(existing, fields):
             existing[key] = value
 
 
+def matches_existing_run(session, fields):
+    # Compare the UTC start_date column. SQLite also normalizes ISO offsets.
+    start = datetime.fromisoformat(fields["start_date"])
+    window = timedelta(seconds=90)
+    candidates = session.scalars(
+        select(Activity).where(
+            Activity.type.in_(("Run", "VirtualRun", "TrailRun")),
+            func.datetime(Activity.start_date).between(
+                (start - window).strftime(DATE_FORMAT),
+                (start + window).strftime(DATE_FORMAT),
+            ),
+            ~Activity.run_id.in_(select(workout_ids.c.run_id)),
+        )
+    )
+    distance = fields["distance"]
+    distance_tolerance = max(100, distance * 0.05)
+    for activity in candidates:
+        if (
+            activity.distance is None
+            or abs(activity.distance - distance) > distance_tolerance
+        ):
+            continue
+        for value, key in (
+            (activity.moving_time, "moving_time"),
+            (activity.elapsed_time, "elapsed_time"),
+        ):
+            duration = fields[key].total_seconds()
+            if value and abs(value.total_seconds() - duration) <= max(
+                60, duration * 0.10
+            ):
+                return True
+    return False
+
+
 def save_workout(session, external_id, fields):
     run_id = session.scalar(
         select(workout_ids.c.run_id).where(workout_ids.c.external_id == external_id)
@@ -151,6 +185,8 @@ def save_workout(session, external_id, fields):
         )
         if owner is not None or session.get(Activity, run_id) is not None:
             raise ValueError(f"Activity ID collision at {run_id}")
+        if matches_existing_run(session, fields):
+            return False
         session.execute(
             insert(workout_ids).values(external_id=external_id, run_id=run_id)
         )
@@ -163,6 +199,7 @@ def save_workout(session, external_id, fields):
         merge_fields(merged, fields)
         for key, value in merged.items():
             setattr(activity, key, value)
+    return True
 
 
 def import_workouts(source, db_path, output, since=None):
@@ -180,8 +217,10 @@ def import_workouts(source, db_path, output, since=None):
         connection = session.connection()
         connection.exec_driver_sql("BEGIN IMMEDIATE")
         workout_ids.create(connection, checkfirst=True)
-        for external_id, fields in workouts.items():
+        imported = sum(
             save_workout(session, external_id, fields)
+            for external_id, fields in workouts.items()
+        )
         # Generator.load flushes the rows and commits after serialization.
         activities = generator.load()
 
@@ -196,7 +235,7 @@ def import_workouts(source, db_path, output, since=None):
         finally:
             temporary_path.unlink(missing_ok=True)
 
-    return len(workouts), skipped
+    return imported, skipped + len(workouts) - imported
 
 
 def main():

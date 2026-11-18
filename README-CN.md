@@ -254,16 +254,15 @@ python run_page/strava_web_sync.py <JWT> --days 7 --only-run
 
 1. 在 HAE 添加 Google Drive 自动化，选择 **Workouts → JSON → Version 2**。指定专用目录，用 **Manual Upload** 先上传一份样本。在 Drive 找到 `Health Auto Export/<目录名>`，记录该目录 URL 中的 ID。
 2. 在 Google Cloud 启用 Drive API，创建专用服务账号和 JSON 密钥。将第 1 步的目录以**查看者**权限分享给服务账号邮箱。保持目录私有。
-3. 在仓库的 **Settings → Secrets and variables → Actions** 添加以下配置。先配好前 3 项，再设置 `RUN_TYPE`。
+3. 在仓库的 **Settings → Secrets and variables → Actions** 添加以下配置。先配好前两项，再设置 `RUN_TYPE`。
 
 | 类型 | 名称 | 值 |
 | --- | --- | --- |
 | Secret | `HAE_DRIVE_SERVICE_ACCOUNT_JSON` | 服务账号密钥 JSON 的完整内容 |
 | Variable | `HAE_DRIVE_FOLDER_ID` | HAE 导出目录 ID |
-| Variable | `HAE_IMPORT_SINCE` | 第一条要导入的活动的起始时间下界，含时区且包含边界 |
 | Variable | `RUN_TYPE` | `health_auto_export_drive` |
 
-切换时间要晚于已收录的最后一场同源跑步，避免和 Strava 历史重叠。配置后，可以在 Actions 手动运行 **Run Data Sync** 验证。之后沿用现有每日调度。每次读取专用目录下所有 JSON，重复活动按 workout ID 合并。源文件临时下载到 runner 的临时目录，运行结束后清理。
+导入会比对现有跑步的开始时间、距离和时长。匹配到已有活动时保留原记录，缺失的活动会补进来。配置后，可以在 Actions 手动运行 **Run Data Sync**，勾选预览验证。之后沿用现有每日调度。每次读取专用目录下所有 JSON，重复活动按 workout ID 合并。源文件临时下载到 runner 的临时目录，运行结束后清理。
 
 ## TUI（终端界面）
 
