@@ -31,7 +31,7 @@ on:
       - requirements.txt
 
 concurrency:
-  group: run-data-sync-${{ github.ref }}
+  group: run-data-sync-${{ github.ref }}-${{ inputs.hae_drive_preview && 'preview' || 'sync' }}
   cancel-in-progress: false
 
 env:
@@ -71,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: ${{ !inputs.hae_drive_preview }}
 
       - name: Set up Python
         id: setup_python
@@ -287,7 +287,7 @@ jobs:
           python run_page/db_updater.py
 
       - name: Make svg GitHub profile
-        if: env.RUN_TYPE != 'pass'
+        if: env.RUN_TYPE != 'pass' && !inputs.hae_drive_preview
         env:
           TITLE: ${{ env.TITLE }}
           TITLE_GRID: ${{ env.TITLE_GRID }}
@@ -303,7 +303,7 @@ jobs:
         # python run_page/gen_svg.py --from-db --title "${{ env.TITLE }}" --type github --github-style "align-monday" --athlete "${{ env.ATHLETE }}" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output assets/github.svg --use-localtime --min-distance 0.5
         # python run_page/gen_svg.py --from-db --year $(date +"%Y")  --language zh_CN --title "$(date +"%Y") Running" --type github --github-style "align-monday" --athlete "${{ env.ATHLETE }}" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output assets/github_$(date +"%Y").svg --use-localtime --min-distance 0.5
       - name: Make month of life
-        if: env.GENERATE_MONTH_OF_LIFE == 'true'
+        if: env.GENERATE_MONTH_OF_LIFE == 'true' && !inputs.hae_drive_preview
         env:
           BIRTHDAY_MONTH: ${{ env.BIRTHDAY_MONTH }}
         run: |
@@ -316,12 +316,12 @@ jobs:
           python run_page/gen_svg.py --from-db --type monthoflife --birth "${{env.BIRTHDAY_MONTH}}" --special-color "#f9d367"  --special-color2 "#f0a1a8" --output assets/mol_skiing.svg --use-localtime --athlete "${{env.ATHLETE}}" --title "Skier Month of Life" --sport-type skiing
 
       - name: Make year summary
-        if: env.GENERATE_MONTH_OF_LIFE == 'true'
+        if: env.GENERATE_MONTH_OF_LIFE == 'true' && !inputs.hae_drive_preview
         run: |
           python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "${{ env.ATHLETE }}"
 
       - name: Save data to parqent
-        if: env.SAVE_TO_PARQENT == 'true'
+        if: env.SAVE_TO_PARQENT == 'true' && !inputs.hae_drive_preview
         run: |
           pip install duckdb==1.1.0
           python run_page/save_to_parqent.py

@@ -90,7 +90,7 @@ R.I.P. 希望大家都能健康顺利的跑过终点，逝者安息。
 | [hanpei](https://running.nexts.top)               | <https://running.nexts.top>                    | Garmin-cn   |
 | [liugezhou](https://github.com/liugezhou)         | <https://run.liugezhou.online>                 | Strava      |
 | [zhubao315](https://github.com/zhubao315)         | <https://zhubao315.github.io/running>          | Strava      |
-| [Jason Tan](https://github.com/Jason-cqtan)       | <https://jason-cqtan.github.io/running_page>   | Nike        |
+| [Jason Tan](https://github.com/Jason-cqtan)       | <https://jason-cqtan.github.io/lifelog/>       | Garmin-cn   |
 | [Conge](https://github.com/conge)                 | <https://conge.github.io/running_page>         | Strava      |
 | [cvvz](https://github.com/cvvz)                   | <https://cvvz.github.io/running>               | Strava      |
 | [zHElEARN](https://github.com/zHElEARN)           | <https://workouts.zhelearn.com>                | Strava      |
@@ -115,7 +115,7 @@ R.I.P. 希望大家都能健康顺利的跑过终点，逝者安息。
 | [Ryan](https://github.com/85Ryan)                 | <https://85ryan.github.io/gooorun/>            | Strava      |
 | [PPZ](https://github.com/8824PPZ)                 | <https://run.dudubbbbbbbbb.top/>               | Strava      |
 | [Yer1k](https://github.com/Yer1k)                 | <https://running.yer1k.com/>                   | Strava      |
-| [AlienVision](https://github.com/weaming)         | <https://run.drink.cafe/>                      | Strava      |
+| [AlienVision](https://github.com/weaming)         | <https://run.bitsflow.org/>                      | Strava      |
 | [Vensent](https://github.com/Vensent)             | <https://vensent.github.io/workouts_page/>     | Garmin      |
 | [Zeonsing](https://github.com/NoonieBao)          | <https://run.jogzeal.com/>                     | Coros       |
 | [yaoper](https://github.com/yaoper)               | <https://running.yaoper.cn>                    | codoon      |
@@ -246,7 +246,9 @@ python run_page/strava_web_sync.py <JWT> --days 7 --only-run
    python run_page/health_auto_export_sync.py /path/to/workouts.json
    ```
 
-导入会更新活动数据库并重新生成 `src/static/activities.json`。运动时长取导出的 workout duration，总用时取开始到结束的时间差。同一条记录重复导入会更新原记录。从其他来源切换时，可以用 `--since 2026-01-01T00:00:00+08:00` 指定包含边界的起始时间，避免重复累计。先试跑可以用 `--db` 和 `--output` 指向临时文件。
+导入会更新活动数据库并重新生成 `src/static/activities.json`。运动时长取导出的 workout duration，总用时取开始到结束的时间差。同一条记录重复导入会更新原记录。导入会对比存量跑步的开始时间、距离和时长。匹配到已有活动时保留原记录。需要限制回溯范围时，可以用 `--since 2026-01-01T00:00:00+08:00`。先试跑可以用 `--db` 和 `--output` 指向临时文件。
+
+导入前先配置轨迹隐私范围。导入器会先裁剪 GPS 轨迹，再写入 SQLite，并保存运动 ID 的哈希值。缩小隐私范围后，可重新导入原始文件以恢复此前裁掉的轨迹点。
 
 原始导出放在仓库外。发布前检查生成的 JSON 和地图，尤其是轨迹起终点。自动化时，可以等导出文件同步到本地目录，再用同一条命令导入。
 
